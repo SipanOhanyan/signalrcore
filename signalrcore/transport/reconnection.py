@@ -34,7 +34,7 @@ class ConnectionStateChecker(object):
 
 
 class ReconnectionType(Enum):
-    raw = 0  # Reconnection with max reconnections and constant sleep time
+    raw = 0  # Reconnection without reconnection limit and constant sleep time
     interval = 1  # variable sleep time
 
 
@@ -65,8 +65,8 @@ class RawReconnectionHandler(ReconnectionHandler):
                 self.attempt_number += 1
                 return self.sleep_time
             else:
-                raise ValueError(
-                    "Max attemps reached {0}"
+                raise StopIteration(
+                    "Max attempt reached {0}"
                     .format(self.max_reconnection_attempts))
         else:  # Infinite reconnect
             return self.sleep_time
@@ -82,6 +82,6 @@ class IntervalReconnectionHandler(ReconnectionHandler):
         index = self.attempt_number
         self.attempt_number += 1
         if index >= len(self._intervals):
-            raise ValueError(
+            raise StopIteration(
                 "Max intervals reached {0}".format(self._intervals))
         return self._intervals[index]

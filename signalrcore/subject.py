@@ -33,7 +33,7 @@ class Subject(object):
                 or self.target is None\
                 or self.invocation_id is None:
             raise ValueError(
-                "subject must be passed as an agument to a send function. "
+                "subject must be passed as an argument to a send function. "
                 + "hub_connection.send([method],[subject]")
 
     def next(self, item: Any):
@@ -44,25 +44,26 @@ class Subject(object):
         """
         self.check()
         with self.lock:
-            self.connection.transport.send(StreamItemMessage(
+            msg = StreamItemMessage(
                 self.invocation_id,
-                item))
+                item)
+            self.connection.state.send(msg)
 
     def start(self):
         """Starts streaming
         """
         self.check()
         with self.lock:
-            self.connection.transport.send(
-                InvocationClientStreamMessage(
+            msg = InvocationClientStreamMessage(
                     [self.invocation_id],
                     self.target,
-                    []))
+                    [])
+            self.connection.state.send(msg)
 
     def complete(self):
         """Finish streaming
         """
         self.check()
         with self.lock:
-            self.connection.transport.send(CompletionClientStreamMessage(
-                self.invocation_id))
+            msg = CompletionClientStreamMessage(self.invocation_id)
+            self.connection.state.send(msg)

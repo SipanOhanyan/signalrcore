@@ -1,12 +1,9 @@
-import uuid
 from .hub.base_hub_connection import BaseHubConnection
 from .hub.auth_hub_connection import AuthHubConnection
-from .transport.websockets.reconnection import \
+from .transport.reconnection import \
     IntervalReconnectionHandler, RawReconnectionHandler, ReconnectionType
 from .helpers import Helpers
-from .messages.invocation_message import InvocationMessage
 from .protocol.json_hub_protocol import JsonHubProtocol
-from .subject import Subject
 
 
 class HubConnectionBuilder(object):
@@ -59,7 +56,7 @@ class HubConnectionBuilder(object):
                 "verify_ssl": False,
                 "access_token_factory": self.login,
                 "headers": {
-                    "mycustomheader": "mycustomheadervalue"
+                    "myCustomHeader": "myCustomHeaderValue"
                 }
             })\
             .configure_logging(logging.ERROR)\
@@ -85,7 +82,7 @@ class HubConnectionBuilder(object):
         if hub_url is None or hub_url.strip() == "":
             raise ValueError("hub_url must be a valid url.")
 
-        if options is not None and type(options) != dict:
+        if options is not None and type(options) is not dict:
             raise TypeError(
                 "options must be a dict {0}.".format(self.options))
 
@@ -194,7 +191,7 @@ class HubConnectionBuilder(object):
                 verify_ssl=self.verify_ssl,
                 skip_negotiation=self.skip_negotiation,
                 enable_trace=self.enable_trace)
-            
+
     def with_automatic_reconnect(self, data: dict):
         """Configures automatic reconnection
             https://devblogs.microsoft.com/aspnet/asp-net-core-updates-in-net-core-3-0-preview-4/
@@ -211,7 +208,7 @@ class HubConnectionBuilder(object):
             .build()
 
         Args:
-            data (dict): [dict with autmatic reconnection parameters]
+            data (dict): [dict with automatic reconnection parameters]
 
         Returns:
             [HubConnectionBuilder]: [self object for fluent interface purposes]

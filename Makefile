@@ -5,6 +5,9 @@ tests:
 package:
 	python3 setup.py sdist bdist_wheel
 
+lint:
+	venv/bin/flake8 signalrcore test
+
 all:
 	tests package
 
@@ -14,6 +17,7 @@ upload:
 coverage:
 	coverage run -m unittest discover -s test/ -p "*_test.py"
 	coverage html --omit="venv/*" -d coverage_html
+	firefox coverage_html/index.html
 
 clean:
 	@find . -name "*.pyc" -exec rm -f '{}' +

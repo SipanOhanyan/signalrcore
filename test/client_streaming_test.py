@@ -1,32 +1,47 @@
-import os
-import unittest
-import logging
-import time
-import uuid
-
-from subprocess import Popen, PIPE
-from signalrcore.hub_connection_builder import HubConnectionBuilder
+import threading
 from signalrcore.subject import Subject
 from test.base_test_case import BaseTestCase, Urls
+
 
 class TestClientStreamMethod(BaseTestCase):
 
     def test_stream(self):
-        self.complete = False
-        self.items = list(range(0,10))
+        connection = self.get_connection()
+        lock = threading.Lock()
+        self.assertTrue(lock.acquire(blocking=True, timeout=30))
+
+        connection.on_open(lock.release)
+        connection.on_close(lock.release)
+
+        connection.start()
+        self.assertTrue(lock.acquire(blocking=True, timeout=30))
+
+        self.items = list(range(0, 10))
         subject = Subject()
-        self.connection.send("UploadStream", subject)
-        while(len(self.items) > 0):
-            subject.next(str(self.items.pop()))
+        connection.send("UploadStream", subject)
+
+        while len(self.items) > 0:
+            item = str(self.items.pop())
+            self.assertIsNone(
+                subject.next(item),
+                f"Error receiving item {item}")
         subject.complete()
+
         self.assertTrue(len(self.items) == 0)
+
+        connection.stop()
+        self.assertTrue(lock.acquire(blocking=True, timeout=30))
+        del lock
+
 
 class TestClientStreamMethodMsgPack(TestClientStreamMethod):
     def get_connection(self):
-        return super().get_connection(msgpack=True)    
+        return super().get_connection(msgpack=True)
 
-class TestClientNosslStreamMethodMsgPack(TestClientStreamMethodMsgPack):
+
+class TestClientNoSslStreamMethodMsgPack(TestClientStreamMethodMsgPack):
     server_url = Urls.server_url_no_ssl
 
-class TestClientNosslStreamMethod(TestClientStreamMethod):
+
+class TestClientNoSslStreamMethod(TestClientStreamMethod):
     server_url = Urls.server_url_no_ssl
