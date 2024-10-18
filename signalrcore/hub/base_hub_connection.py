@@ -221,9 +221,9 @@ class BaseHubConnection(object):
                 for _, handler in fired_handlers:
                     handler(message.arguments)
 
-#            if message.type == MessageType.close:
-#                self.logger.info("Close message received from server")
-#                self.stop()
+            if message.type == MessageType.close:
+                self.logger.info("Close message received from server")
+                self.stop()
                 return
 
             if message.type == MessageType.completion:

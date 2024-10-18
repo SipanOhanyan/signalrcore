@@ -137,8 +137,10 @@ class TestSendMethod(BaseTestCase):
         self.message = "new message {0}".format(uuid.uuid4())
         self.username = "mandrewcito"
         self.received = False
+
         _lock = threading.Lock()
         _lock.acquire()
+
         uid = str(uuid.uuid4())
 
         def release(m):
