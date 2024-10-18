@@ -22,6 +22,12 @@ class DisconnectedHubState(BaseHubConnectionState):
         self.context.change_state(HubConnectionState.connecting)
         return result
 
+    def on_error(self, exception: Exception):
+        self.context.callbacks["on_error"](exception)
+        if self.context.reconnection_handler is not None:
+            self.context.change_state(HubConnectionState.reconnecting)
+            return
+
     def stop(self):
         raise HubConnectionError("Cant stop in Disconnected state")
 

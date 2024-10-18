@@ -39,8 +39,9 @@ class ConnectingHubState(BaseHubConnectionState):
         self.context.transport.send(
             protocol.encode(msg).encode("utf-8"))
 
-    def on_error(self, callback):
-        raise NotImplementedError()
-
-    def on_reconnect(self, callback):
-        raise NotImplementedError()
+    def on_error(self, exception: Exception):
+        self.context.callbacks["on_error"](exception)
+        if self.context.reconnection_handler is None:
+            self.context.change_state(HubConnectionState.disconnected)
+        else:
+            self.context.change_state(HubConnectionState.reconnecting)

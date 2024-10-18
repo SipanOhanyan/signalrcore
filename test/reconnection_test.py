@@ -8,7 +8,7 @@ from signalrcore.hub.errors import HubConnectionError
 from test.base_test_case import BaseTestCase
 from signalrcore.transport.reconnection\
     import RawReconnectionHandler, IntervalReconnectionHandler
-
+from signalrcore.hub.states.base_hub_connection_state import HubConnectionState
 
 class TestReconnectMethods(BaseTestCase):
 
@@ -82,13 +82,23 @@ class TestReconnectMethods(BaseTestCase):
             HubConnectionError,
             lambda: connection.send("DisconnectMe", []))
 
-        connection.stop()
+        self.assertEqual(
+            connection.state.state,
+            HubConnectionState.disconnected)
+
+        self.assertRaises(
+            HubConnectionError,
+            connection.stop)
+
         del _lock
 
     def reconnect_test(self, connection: BaseHubConnection):
-        _lock = threading.RLock()
+        _lock = threading.Lock()
 
         connection.on_open(_lock.release)
+        connection.on_reconnect(_lock.release)
+
+        self.assertTrue(_lock.acquire(timeout=10))
 
         connection.start()
 
@@ -98,7 +108,11 @@ class TestReconnectMethods(BaseTestCase):
 
         self.assertTrue(_lock.acquire(timeout=10))  # released on open
 
+        connection.on_close(_lock.release)
+
         connection.stop()
+        self.assertTrue(_lock.acquire(timeout=10))  # released on open
+
         del _lock
 
     def test_raw_reconnection(self):

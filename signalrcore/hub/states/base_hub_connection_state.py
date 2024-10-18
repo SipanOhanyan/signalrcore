@@ -41,7 +41,7 @@ class BaseHubConnectionState(object):
     def on_error(self, ex: Exception):
         raise NotImplementedError()
 
-    def on_reconnect(self, callback):
+    def on_reconnect(self):
         raise NotImplementedError()
 
     def send(

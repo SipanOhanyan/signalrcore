@@ -2,10 +2,8 @@ import websocket
 import threading
 import requests
 import traceback
-import time
 import ssl
 import logging
-from ...messages.ping_message import PingMessage
 from ...hub.errors\
     import HubError, UnAuthorizedHubError, ConnectionClosedDError
 from ..base_transport import BaseTransport
@@ -44,8 +42,10 @@ class WebsocketTransport(BaseTransport):
 
         if len(self.logger.handlers) > 0:
             websocket.enableTrace(self.enable_trace, self.logger.handlers[0])
+        self.on_close_called = False
 
     def stop(self, wait=False):
+        self.on_close_called = True
         self._ws.close()
         if wait:
             self._thread.join()
@@ -62,17 +62,21 @@ class WebsocketTransport(BaseTransport):
             on_message=self.on_message,
             on_error=self.on_socket_error,
             on_close=self.on_close,
-            on_open=self.on_open,
-            )
+            on_open=self.on_open)
 
-        self._thread = threading.Thread(
-            target=lambda: self._ws.run_forever(
-                sslopt={"cert_reqs": ssl.CERT_NONE}
-                if not self.verify_ssl else {}
-            ))
+        self._thread = threading.Thread(target=self.run_loop)
         self._thread.daemon = True
         self._thread.start()
         return True
+
+    def run_loop(self):
+        try:
+            self._ws.run_forever(
+                sslopt={"cert_reqs": ssl.CERT_NONE}
+                if not self.verify_ssl else {}
+            )
+        except Exception as ex:
+            logging.error(ex)
 
     def negotiate(self):
         negotiate_url = Helpers.get_negotiate_url(self.url)
@@ -107,19 +111,23 @@ class WebsocketTransport(BaseTransport):
         self.logger.debug("-- web socket open --")
         self._on_open()
 
-    def on_close(self, callback, close_status_code, close_reason):
+    def on_close(self, _, close_status_code, close_reason):
         self.logger.debug("-- web socket close --")
         self.logger.debug(close_status_code)
         self.logger.debug(close_reason)
-        if self._on_close is not None and callable(self._on_close):
-            self._on_close()
-        if callback is not None and callable(callback):
-            callback()
-
-    def on_reconnect(self):
-        self.logger.debug("-- web socket reconnecting --")
-        if self._on_close is not None and callable(self._on_close):
-            self._on_close()
+        if self.on_close_called and\
+                self._on_close is not None\
+                and callable(self._on_close):
+            self._on_close(close_status_code, close_reason)
+        if not self.on_close_called:
+            try:
+                threading.Thread(
+                    target=lambda: self._on_error(
+                        HubError(
+                            f"Close raised status code: {close_status_code}"))
+                ).start()
+            except Exception as ex:
+                logging.error(ex)
 
     def on_socket_error(self, app, error):
         """
@@ -156,30 +164,3 @@ class WebsocketTransport(BaseTransport):
             raise ConnectionClosedDError(ex)
         except Exception as ex:
             raise ex
-
-    def handle_reconnect(self):
-        if not self.reconnection_handler.reconnecting\
-                and self._on_reconnect is not None and \
-                callable(self._on_reconnect):
-            self._on_reconnect()
-        self.reconnection_handler.reconnecting = True
-        try:
-            self.stop()
-            self.start()
-        except Exception as ex:
-            self.logger.error(ex)
-            sleep_time = self.reconnection_handler.next()
-            threading.Thread(
-                target=self.deferred_reconnect,
-                args=(sleep_time,)
-            ).start()
-
-    def deferred_reconnect(self, sleep_time):
-        time.sleep(sleep_time)
-        try:
-            if not self.connection_alive:
-                self.send(PingMessage())
-        except Exception as ex:
-            self.logger.error(ex)
-            self.reconnection_handler.reconnecting = False
-            self.connection_alive = False

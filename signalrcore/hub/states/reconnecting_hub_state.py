@@ -26,14 +26,14 @@ class ReconnectingHubState(BaseHubConnectionState):
         return False
 
     def on_exit(self, next_state: BaseHubConnectionState) -> None:
-        raise NotImplementedError()
+        super().on_exit(next_state)
 
     def on_close(self, callback):
         raise NotImplementedError()
 
-    def on_open(self, callback):
-        self.context.on_reconnect()
+    def on_open(self):
         self.context.change_state(HubConnectionState.connected)
+        self.context.callbacks["on_reconnect"]()
 
     def on_error(self, callback):
         raise NotImplementedError()

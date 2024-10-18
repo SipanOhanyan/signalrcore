@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import Callable, Optional, Union, Any, List
 from signalrcore.messages.message_type import MessageType
@@ -62,10 +63,14 @@ class BaseHubConnection(object):
             self.states[HubConnectionState.disconnected](self)
 
         self.callbacks = {
-            "on_close": lambda: print("on_close Not registered"),
-            "on_open": lambda: print("on_close Not registered"),
-            "on_error": lambda: print("on_close Not registered"),
-            "on_reconnect": lambda: print("on_close Not registered")
+            "on_close": lambda: logging.warning(
+                "on_close Not registered"),
+            "on_open": lambda: logging.warning(
+                "on_open Not registered"),
+            "on_error": lambda _: logging.warning(
+                "on_error Not registered"),
+            "on_reconnect": lambda: logging.warning(
+                "on_reconnect Not registered")
         }
 
     def _on_message(self, raw_message):
@@ -216,9 +221,9 @@ class BaseHubConnection(object):
                 for _, handler in fired_handlers:
                     handler(message.arguments)
 
-            if message.type == MessageType.close:
-                self.logger.info("Close message received from server")
-                self.stop()
+#            if message.type == MessageType.close:
+#                self.logger.info("Close message received from server")
+#                self.stop()
                 return
 
             if message.type == MessageType.completion:
